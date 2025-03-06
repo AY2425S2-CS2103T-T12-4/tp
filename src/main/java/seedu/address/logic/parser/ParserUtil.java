@@ -81,11 +81,19 @@ public class ParserUtil {
         return new Address(trimmedAddress);
     }
 
+    /**
+     * Parses a given remark string and returns a {@code Remark} object.
+     * The input remark must not be null.
+     *
+     * @param remark The remark string to be parsed.
+     * @return A {@code Remark} object containing the parsed remark.
+     * @throws ParseException If the remark format is invalid.
+     */
     public static Remark parseRemark(String remark) throws ParseException {
         requireNonNull(remark);
         String trimmedRemark = remark.trim();
 
-        return new Remark(remark);
+        return new Remark(trimmedRemark);
     }
     /**
      * Parses a {@code String email} into an {@code Email}.
