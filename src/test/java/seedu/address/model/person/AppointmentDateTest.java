@@ -6,6 +6,8 @@ import static seedu.address.testutil.Assert.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.parser.exceptions.ParseException;
+
 public class AppointmentDateTest {
 
     @Test
@@ -19,8 +21,8 @@ public class AppointmentDateTest {
         String invalidDate2 = "2025-13-01"; // invalid month
         String invalidDate3 = "2025-12-01 25:00"; // invalid hour
         assertThrows(IllegalArgumentException.class, () -> new AppointmentDate(invalidDate1));
-        assertThrows(IllegalArgumentException.class, () -> new AppointmentDate(invalidDate2));
-        assertThrows(IllegalArgumentException.class, () -> new AppointmentDate(invalidDate3));
+        assertThrows(ParseException.class, () -> new AppointmentDate(invalidDate2));
+        assertThrows(ParseException.class, () -> new AppointmentDate(invalidDate3));
     }
 
     @Test
@@ -42,7 +44,7 @@ public class AppointmentDateTest {
     }
 
     @Test
-    public void equals() {
+    public void equals() throws ParseException {
         AppointmentDate appt1 = new AppointmentDate("2025-03-23 14:00");
         AppointmentDate appt2 = new AppointmentDate("2025-03-23 14:00");
         AppointmentDate appt3 = new AppointmentDate("2025-03-23");

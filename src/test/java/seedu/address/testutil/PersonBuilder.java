@@ -3,6 +3,7 @@ package seedu.address.testutil;
 import java.util.HashSet;
 import java.util.Set;
 
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.AppointmentDate;
 import seedu.address.model.person.Gender;
@@ -39,7 +40,7 @@ public class PersonBuilder {
     /**
      * Creates a {@code PersonBuilder} with the default details.
      */
-    public PersonBuilder() {
+    public PersonBuilder() throws ParseException {
         name = new Name(DEFAULT_NAME);
         phone = new Phone(DEFAULT_PHONE);
         address = new Address(DEFAULT_ADDRESS);
@@ -127,7 +128,7 @@ public class PersonBuilder {
     /**
      * Sets the {@code AppointmentDate} of the {@code Person} that we are building.
      */
-    public PersonBuilder withAppointmentDate(String appointmentDate) {
+    public PersonBuilder withAppointmentDate(String appointmentDate) throws ParseException {
         this.appointmentDate = new AppointmentDate(appointmentDate);
         return this;
     }

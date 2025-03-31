@@ -5,6 +5,7 @@ import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Address;
@@ -22,7 +23,7 @@ import seedu.address.model.tag.Tag;
 public class SampleDataUtil {
     public static final Medicine EMPTY_MEDICINE = new Medicine("");
 
-    public static Person[] getSamplePersons() {
+    public static Person[] getSamplePersons() throws ParseException {
         return new Person[] {
             new Person(new Name("Alex Yeoh"), new Phone("87438807"), new Address("Blk 30 Geylang Street 29, #06-40"),
                     new Gender("Male"), null, new Medicine("Painkiller"), getTagSet(Tag.TagType.CONDITION, "Dementia"),
@@ -51,7 +52,7 @@ public class SampleDataUtil {
         };
     }
 
-    public static ReadOnlyAddressBook getSampleAddressBook() {
+    public static ReadOnlyAddressBook getSampleAddressBook() throws ParseException {
         AddressBook sampleAb = new AddressBook();
         for (Person samplePerson : getSamplePersons()) {
             sampleAb.addPerson(samplePerson);
@@ -68,7 +69,7 @@ public class SampleDataUtil {
                 .collect(Collectors.toSet());
     }
 
-    public static ReadOnlyAddressBook getSampleAddressBookWithValidPersons() {
+    public static ReadOnlyAddressBook getSampleAddressBookWithValidPersons() throws ParseException {
         AddressBook sampleAb = new AddressBook();
         Person[] validPersons = new Person[] {
             new Person(new Name("Alex Yeoh"), new Phone("87438807"), new Address("Blk 30 Geylang Street 29, #06-40"),

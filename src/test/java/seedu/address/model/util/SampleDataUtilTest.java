@@ -9,6 +9,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.AddressBook;
 import seedu.address.model.ReadOnlyAddressBook;
 import seedu.address.model.person.Address;
@@ -50,7 +51,7 @@ public class SampleDataUtilTest {
         assert noTags.isEmpty();
     }
     @Test
-    public void getSampleAddressBook_allValidData_successfullyAddsAll() {
+    public void getSampleAddressBook_allValidData_successfullyAddsAll() throws ParseException {
         Person[] validSamplePersons = new Person[] {
             new Person(new Name("Test A"), new Phone("12345678"), new Address("123 Street"),
                     new Gender("Male"), new AppointmentDate("2025-01-01"), new Medicine(""),
@@ -71,7 +72,7 @@ public class SampleDataUtilTest {
         assertEquals(2, ab.getPersonList().size());
     }
     @Test
-    public void getSampleAddressBook_validSample_success() {
+    public void getSampleAddressBook_validSample_success() throws ParseException {
         ReadOnlyAddressBook sampleAddressBook = SampleDataUtil.getSampleAddressBookWithValidPersons();
 
         assertNotNull(sampleAddressBook);

@@ -5,6 +5,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import seedu.address.logic.commands.EditCommand.EditPersonDescriptor;
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.model.person.Address;
 import seedu.address.model.person.AppointmentDate;
 import seedu.address.model.person.Gender;
@@ -76,7 +77,7 @@ public class EditPersonDescriptorBuilder {
     /**
      * Sets the {@code AppointmentDate} of the {@code EditPersonDescriptor} that we are building.
      */
-    public EditPersonDescriptorBuilder withAppointmentDate(String appointmentDate) {
+    public EditPersonDescriptorBuilder withAppointmentDate(String appointmentDate) throws ParseException {
         descriptor.setAppointmentDate(new AppointmentDate(appointmentDate));
         return this;
     }

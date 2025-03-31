@@ -17,17 +17,19 @@ import static seedu.address.testutil.TypicalPersons.BOB;
 
 import org.junit.jupiter.api.Test;
 
+import seedu.address.logic.parser.exceptions.ParseException;
 import seedu.address.testutil.PersonBuilder;
 
 public class PersonTest {
 
     @Test
-    public void asObservableList_modifyListWithDetailTags_throwsUnsupportedOperationException() {
+    public void asObservableList_modifyListWithDetailTags_throwsUnsupportedOperationException() throws ParseException {
         Person person = new PersonBuilder().build();
         assertThrows(UnsupportedOperationException.class, () -> person.getDetailTags().remove(0));
     }
     @Test
-    public void asObservableList_modifyListWithConditionTags_throwsUnsupportedOperationException() {
+    public void asObservableList_modifyListWithConditionTags_throwsUnsupportedOperationException()
+            throws ParseException {
         Person person = new PersonBuilder().build();
         assertThrows(UnsupportedOperationException.class, () -> person.getConditionTags().remove(0));
     }
@@ -59,7 +61,7 @@ public class PersonTest {
     }
 
     @Test
-    public void equals() {
+    public void equals() throws ParseException {
         // same values -> returns true
         Person aliceCopy = new PersonBuilder(ALICE).build();
         assertTrue(ALICE.equals(aliceCopy));
