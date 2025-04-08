@@ -11,7 +11,7 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 ### Nidhi Nandlal Patil
 
-[[github](https://github.com/johndoe)]
+[[github](https://github.com/patil-np)]
 [[portfolio](team/johndoe.md)]
 
 <img src="images/patil-np.png" width="200px">
@@ -23,7 +23,7 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 <img src="images/popova-mariia.png" width="200px">
 
-[[github](https://github.com/johndoe)]
+[[github](https://github.com/popova-mariia)]
 [[portfolio](team/johndoe.md)]
 
 * Role: Deliverables and deadlines
