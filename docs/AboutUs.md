@@ -11,10 +11,11 @@ You can reach us at the email `seer[at]comp.nus.edu.sg`
 
 ### Nidhi Nandlal Patil
 
+<img src="images/patil-np.png" width="200px">
+
 [[github](https://github.com/patil-np)]
 [[portfolio](team/johndoe.md)]
 
-<img src="images/patil-np.png" width="200px">
 
 * Role: Documentation and Testing
 * Responsibilities: Responsible for the quality of various project documents. Ensures the testing of the project is done properly and on time.
