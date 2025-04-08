@@ -195,91 +195,359 @@ Classes used by multiple components are in the `seedu.address.commons` package.
 
 This section describes some noteworthy details on how certain features are implemented.
 
-### \[Proposed\] Undo/redo feature
+### Add New Patient
 
-#### Proposed Implementation
+The `add` feature allows users to register a new **elderly patient** into SilverCare’s address book, ensuring essential information such as name, phone number, address, gender, appointment date, medicines, and medical notes are captured.  
+This feature supports home-visit nurses and healthcare workers in efficiently managing patient records.
 
-The proposed undo/redo mechanism is facilitated by `VersionedAddressBook`. It extends `AddressBook` with an undo/redo history, stored internally as an `addressBookStateList` and `currentStatePointer`. Additionally, it implements the following operations:
+#### Overview
 
-* `VersionedAddressBook#commit()` — Saves the current address book state in its history.
-* `VersionedAddressBook#undo()` — Restores the previous address book state from its history.
-* `VersionedAddressBook#redo()` — Restores a previously undone address book state from its history.
+* **Command format:**  
+  `add -n NAME -p PHONE -a ADDRESS -g GENDER [-d APPOINTMENT_DATE] [-c CONDITION]... [-det DETAIL]... [-med MEDICINE]`
 
-These operations are exposed in the `Model` interface as `Model#commitAddressBook()`, `Model#undoAddressBook()` and `Model#redoAddressBook()` respectively.
+* **Required fields:**  
+  `-n` (Name), `-p` (Phone), `-a` (Address), `-g` (Gender)
 
-Given below is an example usage scenario and how the undo/redo mechanism behaves at each step.
+* **Optional fields:**  
+  `-d` (Appointment Date), `-c` (Condition Tags), `-det` (Detail Tags), `-med` (Medicine)
 
-Step 1. The user launches the application for the first time. The `VersionedAddressBook` will be initialized with the initial address book state, and the `currentStatePointer` pointing to that single address book state.
+* **Behavior:**
+    * Adds a new patient entry into SilverCare’s records if the command is valid.
+    * Adding beyond the maximum patient limit (30 patients) is disallowed.
+    * Duplicate checking is performed based on custom logic.
 
-![UndoRedoState0](images/UndoRedoState0.png)
 
-Step 2. The user executes `delete 5` command to delete the 5th person in the address book. The `delete` command calls `Model#commitAddressBook()`, causing the modified state of the address book after the `delete 5` command executes to be saved in the `addressBookStateList`, and the `currentStatePointer` is shifted to the newly inserted address book state.
-
-![UndoRedoState1](images/UndoRedoState1.png)
-
-Step 3. The user executes `add -n David …​` to add a new person. The `add` command also calls `Model#commitAddressBook()`, causing another modified address book state to be saved into the `addressBookStateList`.
-
-![UndoRedoState2](images/UndoRedoState2.png)
-
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If a command fails its execution, it will not call `Model#commitAddressBook()`, so the address book state will not be saved into the `addressBookStateList`.
-
+<div class="alert alert-primary">
+  <strong>📋 Duplicate Checking Logic:</strong><br><br>
+  SilverCare uses a <strong>custom duplicate definition</strong> suited for elderly care contexts:<br><br>
+  <ul>
+    <li>Two patients are treated as <strong>duplicates only if both</strong>:
+      <ul>
+        <li>Their <strong>names</strong> are identical, and</li>
+        <li>Their <strong>phone numbers</strong> are identical.</li>
+      </ul>
+    </li>
+    <br>
+    <li>Otherwise, they are treated as <strong>different individuals</strong>, even if:
+      <ul>
+        <li>They share the same phone number but have different names (e.g., shared phones).</li>
+        <li>They share the same name but have different phone numbers.</li>
+      </ul>
+    </li>
+  </ul>
+  <br>
+  This design acknowledges that in settings like old age homes or multi-residence households, different patients may share contact numbers or addresses.
 </div>
 
-Step 4. The user now decides that adding the person was a mistake, and decides to undo that action by executing the `undo` command. The `undo` command will call `Model#undoAddressBook()`, which will shift the `currentStatePointer` once to the left, pointing it to the previous address book state, and restores the address book to that state.
 
-![UndoRedoState3](images/UndoRedoState3.png)
+#### Key Classes & Logic
 
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If the `currentStatePointer` is at index 0, pointing to the initial AddressBook state, then there are no previous AddressBook states to restore. The `undo` command uses `Model#canUndoAddressBook()` to check if this is the case. If so, it will return an error to the user rather
-than attempting to perform the undo.
+* `AddressBookParser`
+    * Recognizes the `add` command.
+    * Passes arguments to `AddCommandParser`.
 
+* `AddCommandParser`
+    * Tokenizes and parses input arguments based on defined prefixes.
+    * Validates presence of mandatory fields.
+    * Parses fields via `ParserUtil`, applying constraints (e.g., name length, phone format).
+    * Constructs a `Person` object.
+    * Returns an `AddCommand` initialized with the new `Person`.
+
+* `AddCommand`
+    * Executes the addition of the new `Person` into the model's address book.
+    * Enforces duplicate checking and the patient limit constraint.
+
+* `UniquePersonList`
+    * Adds the `Person` if no duplicate is found and capacity permits.
+    * Automatically sorts the list by upcoming appointment dates.
+
+* `Person`
+    * Represents an elderly patient record, holding immutable fields such as name, phone, address, gender, appointment date, medicines, conditions, and details.
+
+
+#### Design Considerations
+
+* **Name Length Restriction:**
+    * Names must be between **1 to 50 characters**.
+    * This ensures proper UI display without breaking layout across different window sizes.
+
+* **Phone Number Validation:**
+    * Must consist of only **numeric digits (0-9)**.
+    * Must be between **3 to 15 digits**.
+    * No `+`, `-`, spaces, or special characters are permitted.
+
+  *Rationale:*
+    * Ensures simplicity in validation and consistency in stored data.
+    * Avoids ambiguity across international formats if country codes are added separately in the future.
+
+* **Fault Tolerance:**
+    * If mandatory fields are missing, field formats are invalid (e.g., wrong phone number, invalid date), or constraints are violated (e.g., exceeding name length), the `add` command fails safely.
+    * Clear error messages guide the user to correct the input without crashing the system.
+
+* **Extensibility:**
+    * Adding more optional fields (e.g., emergency contacts) can be done by extending `Person`, `AddCommandParser`, and `AddCommand` accordingly.
+
+* **Consistency:**
+    * All new patients are validated, parsed, and added through a consistent, centralized flow, ensuring system-wide data integrity.
+
+<div class="alert alert-primary">
+  <strong>💡 Patient-Focused Data Entry:</strong><br><br>
+  SilverCare is designed to manage <strong>elderly patients</strong>, not caregivers or next-of-kin.<br><br>
+  If the contact number provided belongs to a caregiver or family member instead of the patient, it is recommended to clearly mention this information using the <code>-det</code> (detail tag) field.<br><br>
+  This helps users maintain clarity when viewing patient records, but it is <strong>not strictly enforced</strong> by the system.
 </div>
 
-The following sequence diagram shows how an undo operation goes through the `Logic` component:
 
-![UndoSequenceDiagram](images/UndoSequenceDiagram-Logic.png)
 
-<div markdown="span" class="alert alert-info">:information_source: **Note:** The lifeline for `UndoCommand` should end at the destroy marker (X) but due to a limitation of PlantUML, the lifeline reaches the end of diagram.
+### Delete Patient or Clear List
 
+The `delete` and `clear` commands allow users to remove individual patients or clear the entire address book.  
+Both operations require confirmation (`y` to proceed, `n` to abort) before the action is finalized.  
+This two-step process helps prevent accidental data loss.
+
+#### Overview
+
+* **Delete command format:** `delete INDEX` – Initiates a request to delete the patient at the specified index from the displayed list.
+* **Clear command format:** `clear` – Initiates a request to clear all patient records from the address book.
+* **Confirmation format:** `y` – Confirms and proceeds with the pending delete or clear operation.
+* **Abort format:** `n` – Cancels the pending delete or clear operation.
+
+<div class="alert alert-warning">
+  <strong>⚠️ Important Behavior Notes:</strong>
+  <ul>
+    <li>The deletion or clearing does <strong>not</strong> happen immediately upon <code>delete</code> or <code>clear</code>.</li>
+    <li>The system enters a <strong>pending</strong> state, waiting for explicit user confirmation.</li>
+    <li>If the user types a recognized new command (other than <code>y</code> or <code>n</code>), the pending operation is <strong>abandoned</strong> automatically.</li>
+    <li>If the user types an unrecognized input while a pending operation exists, the system <strong>prompts the user again</strong> for a clear yes (<code>y</code>) or no (<code>n</code>).</li>
+  </ul>
 </div>
 
-Similarly, how an undo operation goes through the `Model` component is shown below:
 
-![UndoSequenceDiagram](images/UndoSequenceDiagram-Model.png)
+#### Key Classes & Logic
 
-The `redo` command does the opposite — it calls `Model#redoAddressBook()`, which shifts the `currentStatePointer` once to the right, pointing to the previously undone state, and restores the address book to that state.
+1. `DeleteCommand`
+    * Parses the provided index.
+    * Validates that the index is within bounds and refers to an existing patient.
+    * Sets the `pendingDeletion` field in `ModelManager`.
+    * Returns a `CommandResult` prompting the user to confirm or abort.
 
-<div markdown="span" class="alert alert-info">:information_source: **Note:** If the `currentStatePointer` is at index `addressBookStateList.size() - 1`, pointing to the latest address book state, then there are no undone AddressBook states to restore. The `redo` command uses `Model#canRedoAddressBook()` to check if this is the case. If so, it will return an error to the user rather than attempting to perform the redo.
+2. `ClearCommand`
+    * Checks if there are any patients to clear.
+    * Sets the `pendingClear` flag in `ModelManager`.
+    * Returns a `CommandResult` prompting the user to confirm or abort.
 
+3. `ConfirmCommand`
+    * If a pending deletion exists, deletes the targeted `Person`.
+    * If a pending clear exists, clears the entire address book.
+    * If both deletion and clear are pending simultaneously (should not normally happen), throws a `CommandException`.
+
+4. `AbortCommand`
+    * If a pending deletion exists, cancels the pending delete operation.
+    * If a pending clear exists, cancels the pending clear operation.
+    * If both are pending simultaneously, throws a `CommandException`.
+
+5. `ModelManager`
+    * `pendingDeletion`: holds the `Person` object marked for deletion (or `null` if none).
+    * `pendingClear`: boolean flag indicating if a clear operation is pending.
+    * Provides methods to set, check, and clear these pending states.
+
+6. `LogicManager`
+    * `checkPendingConfirmation(String commandText)` method checks for pending confirmations.
+    * If user input is unrelated to confirmation:
+        * If input is a **recognized command**, pending operations are **cleared automatically**.
+        * If input is **unrecognized**, the system **throws a `ParseException`** prompting the user to confirm properly.
+
+---
+
+#### Design Considerations
+
+* **Fault Tolerance:**  
+  Deleting or clearing does not happen immediately, ensuring users cannot accidentally delete important data with a single misclick.
+
+* **User Flexibility:**  
+  If users change their mind midway and type another valid command, the app cancels the pending operation and executes the new command normally.
+
+* **Consistent Confirmation Flow:**  
+  Whether deleting one patient or clearing the whole address book, users confirm with a simple `y` (yes) or `n` (no).
+
+* **Extensibility:**  
+  Future operations that require user confirmation can reuse the same pending confirmation mechanism (e.g., batch deletions, bulk updates).
+
+
+### **Find patients by name**
+
+The `find` command allows users to search and filter patients by their name. This is particularly useful for home-visit nurses who need to locate patient records quickly during appointments.
+
+#### **Overview**
+
+* **Find command format:** `find -n KEYWORDS` 
+* `KEYWORDS` can be a full name or a partial name. 
+* Multiple keywords can be provided and are space-separated.
+
+
+* **Example usage:** `find -n John` / `find -n Alice Bob`
+
+
+#### **Behavior**
+
+* Matches patients whose names contain **all** of the specified keywords.
+* Matching is **case-insensitive** and allows for **partial matches**.
+* If no patients match the keywords, an appropriate message is displayed to the user.
+
+
+<div class="alert alert-warning">
+  <strong>⚠️ Important Behavior Note:</strong><br><br>
+  <ul>
+    <li><strong>All provided keywords must be found in the same patient's name</strong> for a match to occur.</li>
+    <br>
+    <li>Example: If the user searches <code>find -n Alice Bob</code>:
+      <ul>
+        <li>"Alice Tan" matches "Alice" but not "Bob".</li>
+        <li>"Bob Lee" matches "Bob" but not "Alice".</li>
+        <li><strong>Result:</strong> No patient will be displayed because neither patient matches both keywords simultaneously.</li>
+      </ul>
+    </li>
+  </ul>
 </div>
 
-Step 5. The user then decides to execute the command `list`. Commands that do not modify the address book, such as `list`, will usually not call `Model#commitAddressBook()`, `Model#undoAddressBook()` or `Model#redoAddressBook()`. Thus, the `addressBookStateList` remains unchanged.
 
-![UndoRedoState4](images/UndoRedoState4.png)
+#### Highlighting Matches
 
-Step 6. The user executes `clear`, which calls `Model#commitAddressBook()`. Since the `currentStatePointer` is not pointing at the end of the `addressBookStateList`, all address book states after the `currentStatePointer` will be purged. Reason: It no longer makes sense to redo the `add -n David …​` command. This is the behavior that most modern desktop applications follow.
+* After search results are displayed, the **matching portions** of the names are **highlighted**.
+* Highlighting is case-insensitive and works even for partial matches.
+    * Example: Searching for `find -n ann` will highlight "Ann" in "Annabelle" and "Johann".
 
-![UndoRedoState5](images/UndoRedoState5.png)
+This improves usability by helping users quickly spot the relevant matches in the results list.
 
-The following activity diagram summarizes what happens when a user executes a new command:
 
-<img src="images/CommitActivityDiagram.png" width="250" />
+#### **Key Classes & Logic**
 
-#### Design considerations:
+1. `FindCommand`
+    * Accepts a `Predicate<Person>` when constructed.
+    * During execution, calls `model.updateFilteredPersonList(predicate)`.
+    * Returns a `CommandResult` indicating the number of patients found, or a message if none were found.
 
-**Aspect: How undo & redo executes:**
+2. `NameContainsKeywordsPredicate`
+    * Implements `Predicate<Person>`.
+    * Takes a list of keywords.
+    * Returns `true` if the `Person`'s name contains any of the keywords, ignoring case.
 
-* **Alternative 1 (current choice):** Saves the entire address book.
-  * Pros: Easy to implement.
-  * Cons: May have performance issues in terms of memory usage.
+3. `ModelManager`
+    * Handles updating the filtered person list via `updateFilteredPersonList(predicate)`.
+    * The updated list is then shown in the UI automatically.
 
-* **Alternative 2:** Individual command knows how to undo/redo by
-  itself.
-  * Pros: Will use less memory (e.g. for `delete`, just save the person being deleted).
-  * Cons: We must ensure that the implementation of each individual command are correct.
+4. `PersonCard`
+    * Handles **highlighting** of matching name parts in the UI after a successful search.
 
-_{more aspects and alternatives to be added}_
+#### **Design Considerations**
 
-### Find upcoming appointments
+* **Case-Insensitive Search:**  
+  Improves usability by ignoring capitalization differences between user input and stored names.
+
+* **Partial Matching:**  
+  Allows flexible searches — e.g., entering "Ann" matches "Annabelle" and "Johann".  
+  This enables nurses to find patients even if they cannot remember the full name or exact spelling, improving efficiency during home visits.
+
+* **Independent Patient Matching:**  
+  Keywords are checked independently against each patient’s name. There is no cross-patient aggregation of keywords.  
+  This ensures that search results accurately reflect a single patient's record matching all criteria, avoiding confusion where unrelated patients might otherwise satisfy different parts of the search unintentionally.
+
+* **Fault Tolerance:**  
+  No crashes occur if there are no matching results. An informative message is displayed.
+
+* **Extensibility:**  
+  The `Predicate<Person>` architecture makes it easy to extend to other fields (e.g., conditions, addresses) without changing the core logic of `FindCommand`.
+
+#### Example
+
+| User Input | Behavior                                                                                              |
+|------------|-------------------------------------------------------------------------------------------------------|
+| `find -n John` | Displays all patients whose names contain the word "John" (case-insensitive).                         |
+| `find -n joHN` | Displays the same results as `find -n John` — the search is case-insensitive.                         |
+| `find -n` | Error — name keyword cannot be empty.                                                                 |
+| `find -n John Doe` | Displays all patients whose names contain both "John" and "Doe" in that order. |
+| `find -n Annette John` | Displays patients whose names contain both "Annette" and "John".                                      |
+
+
+### Find Patients by Appointment Date
+
+This `find` feature allows users to search for patients who have a specific appointment date scheduled.  
+This functionality is helpful when nurses want to quickly check who they are scheduled to visit on a particular day.
+
+#### Overview
+
+* **Command format:** `find -d APPOINTMENT_DATE`
+* Filters patients whose appointment date exactly matches the provided date input.
+* Supports both date-only format (e.g., `yyyy-MM-dd`) and full datetime format (e.g., `yyyy-MM-dd HH:mm`).
+
+#### Behavior
+
+* Users must provide a valid date format. Otherwise, parsing fails and an error is shown.
+* Matching is **exact** — the appointment must match the date input provided.
+    - If the input includes only the date (e.g., `2025-04-10`), only appointments on that date (ignoring time) are matched.
+    - If the input includes date and time (e.g., `2025-04-10 14:30`), the match is stricter, including both date and time.
+* Partial matches (e.g., just matching the year or month) are not supported.
+
+
+#### Key Classes & Logic
+
+1. `FindCommandParser`
+    * Detects the `-d` prefix in user input.
+    * Parses the appointment date string provided.
+    * Creates a `FindCommand` with an `AppointmentDatePredicate`.
+    * Throws a `ParseException` if the date format is invalid.
+
+2. `AppointmentDatePredicate`
+    * Implements `Predicate<Person>`.
+    * Checks if a patient's appointment date matches the parsed input date.
+    * Supports parsing both:
+        * **Date-only** (`yyyy-MM-dd`) — matches any appointment with that date.
+        * **Datetime** (`yyyy-MM-dd HH:mm`) — matches the exact appointment datetime.
+
+3. `FindCommand`
+    * Accepts the `AppointmentDatePredicate` during construction.
+    * During execution, calls `model.updateFilteredPersonList(predicate)`, updating the view to show only matching patients.
+
+4. `AppointmentDate`
+    * Represents a patient's appointment date field.
+    * Ensures that date strings stored in the system are valid and consistent.
+
+5. `PersonCard`
+    * Handles **highlighting** of matching appointment dates in the UI after a successful search.
+
+
+#### Design Considerations
+
+* **Strict Date Parsing:**  
+  The command enforces strict formatting to prevent confusion caused by ambiguous or partial dates.
+
+* **Two-level Matching Flexibility:**
+    - If users input only the date (no time), matches are based on the date alone.
+    - If users input full date and time, matches are based on both.
+
+  This balances ease of use (for day-based searches) with precision (for exact-time searches).
+
+* **Fault Tolerance:**  
+  When invalid date formats are entered, the system throws a `ParseException` with a clear message, guiding users to correct their input without crashing the app.
+
+* **Extensibility:**  
+  The `Predicate<Person>` structure means the logic for date matching is fully encapsulated. Future enhancements (e.g., range searches, week-based searches) can be added by introducing new predicates without modifying core classes like `FindCommand`.
+
+* **Highlighting Matches:**  
+  Matching appointment dates are **highlighted** in the UI after search results are shown.  
+  This improves visibility and quickly draws attention to relevant fields.
+
+
+#### Example
+
+| User Input | Behavior |
+|------------|----------|
+| `find -d 2025-04-10` | Displays all patients with appointments on 10 April 2025, regardless of time. |
+| `find -d 2025-04-10 14:30` | Displays only patients with an appointment exactly on 10 April 2025 at 2:30 PM. |
+| `find -d 2025-4-10` | Error — invalid format. Requires leading zeros (e.g., `2025-04-10`). |
+
+
+### Find Upcoming Appointments
 
 The `upcoming` feature under the `find` command allows users to filter and display only those persons who have future appointments scheduled. This functionality is useful for quickly identifying clients with pending appointments.
 
@@ -313,11 +581,179 @@ The following class diagram shows the relationship between key classes involved:
 
 ![UpcomingAppointmentClassDiagram](images/UpcomingAppointmentClassDiagram.png)
 
+
+<div class="alert alert-warning">
+  <strong>⚠️ Important Limitation:</strong><br><br>
+  Each <code>find</code> command is designed to accept only <strong>one search type at a time</strong>.<br><br>
+  <ul>
+    <li>You must choose either:
+      <ul>
+        <li>Find by <code>-n</code> (Name),</li>
+        <li>Find by <code>-d</code> (Appointment Date), or</li>
+        <li>Find <code>upcoming</code> appointments.</li>
+      </ul>
+    </li>
+    <br>
+    <li>Combining multiple types in one command (e.g., <code>find -n John -d 2025-12-12</code>) is <strong>not supported</strong> and will result in an error displayed to users.</li>
+  </ul>
+</div>
+
+
 #### Design Considerations
 
-* **Fault Tolerance:** Any parsing errors during predicate evaluation result in a safe `false` return, preventing the app from crashing.
-* **Extensibility:** This approach cleanly separates predicates, allowing future filters (e.g., "past appointments", "appointments this week") to be added by introducing new `Predicate<Person>` classes.
-* **Single Responsibility:** Each class follows the SRP principle—e.g., `FindCommandParser` handles parsing, `UpcomingAppointmentPredicate` handles logic, and `AppointmentDate` handles formatting.
+* **Fault Tolerance:**  
+  Parsing errors during predicate evaluation (such as invalid appointment dates) result in a safe `false` return.  
+  This ensures the app remains stable and does not crash even if invalid data is encountered during a search.
+
+* **Extensibility:**  
+  The predicate-based design allows easy addition of new search filters (e.g., finding past appointments, filtering by appointment week) without modifying existing logic.  
+  Developers can simply introduce new `Predicate<Person>` classes to extend functionality.
+
+* **Single Responsibility Principle (SRP):**  
+  Each class involved in the find-upcoming feature has a clear and separate responsibility:
+    - `FindCommandParser` handles parsing the user’s input.
+    - `UpcomingAppointmentPredicate` handles checking appointment timing logic.
+    - `AppointmentDate` handles formatting and validation of date strings.  
+      This separation improves maintainability and readability of the codebase.
+
+
+### Edit patient details
+
+The `edit` feature allows users to modify the details of an existing patient in SilverCare’s address book.
+
+#### Overview
+
+* **Edit command format:** `edit INDEX [-n NAME] [-p PHONE] [-a ADDRESS] [-g GENDER] [-d APPOINTMENT_DATE] [-c CONDITION]... [-det DETAIL]... [-med MEDICINE]`
+
+* **Required fields:** `INDEX` (the index of the patient to edit, from the displayed list)
+
+* **Optional fields:** Any combination of `-n`, `-p`, `-a`, `-g`, `-d`, `-c`, `-det`, `-med`
+
+* **Example usage:**
+  ```
+  edit 1 -n John Doe -p 91234567 -a 123 Clementi Ave 3 -g Male
+  edit 2 -d 2025-05-01
+  edit 3 -c High BP -c Diabetes -det wheelchair-bound -med Panadol
+  ```
+
+#### Behavior
+
+* The `edit` command allows **selective field updates** — only the fields provided are modified.
+* Fields not specified remain unchanged.
+* Editing patient information that would cause duplication (e.g., creating two patients with identical name and phone number) is disallowed.
+* After editing, the patient list is **re-sorted automatically by upcoming appointment dates**, if the appointment date was changed.
+
+> 📌 **Important:**  
+> If a patient's appointment date is edited, the patient list dynamically reorders itself to maintain chronological sorting of upcoming appointments.  
+> This ensures that nurses always view patients in order of scheduled visits.
+
+* If no fields are provided to edit, the system shows an error:  
+  `At least one field to edit must be provided.`
+
+* If the provided index is invalid (e.g., out of bounds), an appropriate error message is shown.
+
+---
+
+#### Key Classes & Logic
+
+1. `EditCommand`
+    * Receives the index and an `EditPersonDescriptor` containing the new field values.
+    * Retrieves the corresponding `Person` from the current filtered list.
+    * Creates a new `Person` by combining the existing fields and the edited ones.
+    * Validates against duplication rules.
+    * Updates the model with the edited person.
+    * Refreshes the filtered list with `PREDICATE_SHOW_ALL_PERSONS`.
+    * **If appointment date was modified:**  
+      The person list is automatically re-sorted by upcoming appointment dates.
+
+2. `EditCommand.editPersonDescriptor`
+    * A helper class that stores which fields are edited.
+    * Supports checking whether any field was actually modified.
+    * Makes defensive copies of tag sets (`conditionTags`, `detailTags`).
+
+3. `ModelManager`
+    * `setPerson(Person target, Person editedPerson)` updates the address book entry.
+    * `updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)` refreshes the patient list.
+    * The person list is **automatically sorted by appointment date** after any addition or edit that modifies appointment dates.
+
+4. `UniquePersonList`
+    * Handles person uniqueness checks when replacing a person.
+    * Ensures that two persons with the same identifying information cannot coexist.
+
+5. `PersonCard`
+    * Displays updated patient information in the GUI.
+    * **Highlights** search keyword matches for names and appointment dates if a find operation is active.
+
+---
+
+#### Design Considerations
+
+* **Minimal disruption:**  
+  Only the specified fields are updated; all other information remains unchanged, reducing the risk of unintentional data loss.
+
+* **Fault tolerance:**
+    - Prevents edits that would result in duplicate patients.
+    - Provides clear error messages when index is invalid or no fields are specified.
+    - Ensures system remains stable and data remains consistent even if partial input is provided.
+
+* **Automatic sorting:**  
+  Whenever appointment dates are edited, the patient list is **re-sorted automatically** without requiring manual intervention.  
+  This guarantees that the nurse's view remains organized by upcoming visits.
+
+* **Consistency with add flow:**  
+  Editing fields uses the same validation rules as adding a patient (e.g., name format, phone number restrictions), ensuring consistent data quality.
+
+* **Extensibility:**  
+  Future fields (e.g., adding emergency contacts, allergies) can be incorporated easily into the edit mechanism by expanding `EditPersonDescriptor` and adjusting parsing logic.
+
+
+### List Patients
+
+The `list` feature allows users to reset the patient view to display **all currently stored patients**.  
+This is particularly useful after performing a search, filter, or any operation that narrows down the patient list.
+
+#### Overview
+
+* **Command format:** `list`
+
+* **Behavior:**
+    * Displays all patients currently stored in SilverCare.
+    * If the list was previously filtered (e.g., after a `find` command), the view resets to show the full list.
+    * The patients are shown **sorted by appointment date** (earliest first), as per the address book's standard ordering.
+    * No parameters are needed — simply typing `list` is sufficient.
+
+#### Key Classes & Logic
+
+1. `ListCommand`
+    * Implements the `Command` interface.
+    * When executed, it calls `model.updateFilteredPersonList(PREDICATE_SHOW_ALL_PERSONS)`.
+    * This resets the filtered list to include all persons from the address book.
+    * Returns a `CommandResult` with a simple success message ("Listed all persons").
+
+2. `ModelManager`
+    * Holds the `updateFilteredPersonList()` method.
+    * When `PREDICATE_SHOW_ALL_PERSONS` is passed in, it resets the internal filtered list to include **all persons**.
+
+3. `PersonCard`
+    * The UI automatically updates to display all persons.
+    * Patients are shown with their respective details (name, phone, address, appointment date, conditions, etc.).
+    * Patients remain **sorted by appointment date** after listing — because the internal list is always maintained sorted whenever patients are added or edited.
+
+#### Design Considerations
+
+* **Simplicity:**  
+  No arguments are required — a simple `list` command brings back the full patient list immediately.
+
+* **Fault Tolerance:**  
+  No errors occur if `list` is used when already viewing all patients — the operation is harmless and simply reaffirms the full list.
+
+* **Consistency:**  
+  Patients are consistently displayed **sorted by upcoming appointment date** to help nurses easily prioritize visits.
+
+* **Extensibility:**  
+  Future versions could extend the `list` command with optional flags (e.g., `list archived`) to display archived patients separately without affecting the current structure.
+
+
 
 --------------------------------------------------------------------------------------------------------------------
 
@@ -337,12 +773,15 @@ The following class diagram shows the relationship between key classes involved:
 
 **Target user profile**:
 
-* nurses who do home visits for elderly patients
-* has a need to manage a significant number of contacts
-* is reasonably comfortable using CLI apps
+* Nurses who do home visits for elderly patients
+* Needs to manage a significant number of contacts
+* Is reasonably comfortable using CLI-based apps
 
 **Value proposition**: The app will help nurses caring for elderly patients manage contact details of their home-visit patients within one platform.
 
+<blockquote style="color: #333333;">
+Note: At present, SilverCare is designed to manage patient contacts only. It does not support storing information for family members, guardians, or emergency contacts. This decision was made intentionally to keep the app focused and avoid ambiguity during patient record management.
+</blockquote>
 
 ### User stories
 
@@ -883,87 +1322,74 @@ All members contributed equally across design, implementation, and testing phase
 ## **Appendix: Planned Enhancements**
 
 Team size: 5
+### 1. Disallow adding past appointment dates
+**Current Limitation:** The system currently allows users to add appointment dates that have already passed.
 
-1. **Disallow adding of past appointment dates**
+**Planned Enhancement:** Restrict users from entering past dates for new or edited appointments.
 
-   **Current Flaw:** The application allows users to add appointments in the past, which is unrealistic in most use cases.
+**Sample Output:**
+`Appointment date must be today or later.`
 
-   **Planned Enhancement:** We will reject commands that attempt to schedule appointments for dates earlier than the current date.
+### 2. Make the medicine field more structured and repeatable
+**Current Limitation:**
+The medicine field is currently a single long string, which accepts comma-separated medicine names but offers no structure or repeatability.
+Users cannot add medicine entries separately or include details like dosage and frequency.
 
-   **Sample Output:** `Appointment date must be today or later.`
+**Planned Enhancement:**
+Allow the `-med` field to be repeatable and support structured input for each entry (e.g. name, dosage, frequency).
+This makes it easier to store, update, and display individual medication records.
 
-2. **Warn users of overlapping appointment dates**
+**Sample Input (future):**
+`-med Paracetamol (500mg, twice a day) -med Omeprazole (20mg, once daily)`
 
-   **Current Flaw:** Users can accidentally schedule multiple appointments for the same time without any warning.
+### 3. Improve input validation for name-based search
+**Current Limitation:**
+The `find -n` command accepts any non-empty input and defaults to “no patients found.”
 
-   **Planned Enhancement:** The system will display a warning if a new appointment overlaps with an existing one for the same patient.
+**Planned Enhancement:**
+Detect clearly invalid inputs (e.g. empty, all-symbol, extremely short) and display a more meaningful error message.
 
-   **Sample Output:** `Warning: Appointment overlaps with an existing one on 2025-07-20.`
+**Sample Output:** `Search term is invalid. Please enter a proper name.`
 
-3. **Allow adding recurring appointment dates**
+### 4. Allow appointment date to be cleared using the edit command
+**Current Limitation:**
+Unlike `-c` and `-det`, providing an empty `-d` does not clear an existing appointment date.
 
-   **Current Flaw:** Users must manually input each recurring appointment, which is inefficient.
+**Planned Enhancement:**
+Support clearing the appointment date by accepting `-d` with no argument during edit.
 
-   **Planned Enhancement:** Support a `-r weekly` or `-r monthly` flag to automatically add recurring appointments.
+**Sample Input:** `edit 1 -d  `
 
-   **Sample Input:** `add -n John -d 2025-07-20 -r weekly -t 5` (creates 5 weekly recurring appointments)
+### 5. Add find-and-replace functionality for editing tags
+**Current Limitation:**
+Editing a single condition or detail tag requires re-entering all tags, as the current logic replaces the entire existing list.
 
-4. **Make medicine field more detailed**
+**Planned Enhancement:**
+Introduce a `find-and-replace` syntax to update a specific tag in-place.
 
-   **Current Flaw:** Only medicine names are captured, with no information on dosage or frequency.
+**Sample Input:**
+`edit 2 -c Migraine->Chronic Migraine -det Lives Alone->Requires Assistance`
 
-   **Planned Enhancement:** Allow inputs like `"Paracetamol (500mg, twice a day)"` in the medicine field.
+### 6. Warn users about overlapping appointments
+**Current Limitation:**
+There is no indication if multiple appointments are scheduled for the same date and time.
 
-   **Sample Input:** `add ... -med Paracetamol (500mg, twice a day)`
+**Planned Enhancement:**
+Detect and warn the user when a newly entered appointment overlaps with an existing one for the same patient.
 
-5. **Add find-and-replace functionality for editing tags (Conditions/Details)**
+**Sample Output:**
+`Warning: This appointment overlaps with another on 2025-07-20 at 14:00.`
 
-   **Current Flaw:** Users must retype all tags when editing a single condition or detail.
+### 7. Fix highlight issue in multi-word name searches
+**Current Limitation:**
+When using `find -n` with multi-word input (e.g. John Lim), matches are returned but highlighted text only works for single words.
 
-   **Planned Enhancement:** Support syntax like `edit -c Migraine->Chronic Migraine` to update one tag.
+**Planned Enhancement:**
+Improve result rendering to highlight all matched words in multi-keyword searches.
 
-   **Sample Input:** `edit 1 -c Sleep Apnea->Mild Sleep Apnea -det Fall Prone->Bedridden`
+### 8. Enable multi-name search to match across multiple patients
+**Current Limitation:**
+`find -n Bob Amy` only returns matches where both keywords are found in the same patient name. It does not return separate matches for “Bob” and “Amy.”
 
-6. **Color-code urgent appointments in the UI**
-
-   **Current Flaw:** All appointments look the same regardless of urgency.
-
-   **Planned Enhancement:** Use colored backgrounds (e.g. red, orange, yellow) in appointment cards to indicate urgency.
-
-   **Sample UI:**
-    * Red background → urgent
-    * Orange background → moderate urgency
-    * Yellow background → low urgency
-
-7. **Allow users to choose sorting method**
-
-   **Current Flaw:** Appointments are sorted by date only, and users cannot change this.
-
-   **Planned Enhancement:** Provide a command like `sort name`, `sort medicine`, or `sort date`.
-
-   **Sample Input:** `sort name`
-
-   **Sample Output:** Sorted contact list by name (A-Z)
-
-8. **Change command input field from single line to text box**
-
-   **Current Flaw:** Long input commands are hard to navigate and edit due to the limited width of the input field.
-
-   **Planned Enhancement:** Replace the single-line input with a multi-line text box to improve visibility and ease of editing.
-
-   **Sample UI:** A resizable input box that allows scrolling and full command visibility.
-
-9. **Allow uploading of patient images**
-
-   **Current Flaw:** Users rely solely on names to identify patients, which may lead to errors.
-
-   **Planned Enhancement:** Allow users to attach an image file to each patient profile for clearer visual identification.
-
-   **Sample Input:** `add -n John -img /path/to/john_photo.jpg`
-10. **Improve input validation for name-based search**
-
-    **Current Flaw:** The find -n command accepts any input, including numbers or symbols. When the input is invalid, the system still returns “No such patients in the list” instead of indicating that the search was not meaningful.
-
-    **Planned Enhancement:** Detect and reject clearly invalid name inputs such as empty strings, purely non-alphabetic characters, or excessively short queries. Provide a helpful message to guide users to enter a valid name.
-
-    **Sample Output:** Search term is invalid. Please enter a proper name.
+**Planned Enhancement:**
+Allow find -n to return results for any of the keywords (logical OR), not just matches containing all of them.
